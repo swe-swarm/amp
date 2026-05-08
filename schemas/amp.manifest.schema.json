@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://swe-swarm.github.io/amp/schemas/amp.manifest.schema.json",
+  "title": "AMP Manifest",
+  "description": "Unified semantic schema for the Agent Manifest Protocol ecosystem.",
+  "type": "object",
+  "required": [
+    "amp",
+    "protocol",
+    "agent",
+    "identities",
+    "ui"
+  ],
+  "properties": {
+    "amp": {
+      "type": "string",
+      "const": "AMP"
+    },
+    "protocol": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Agent Manifest Protocol",
+          "Adaptive Manifest Protocol",
+          "Adaptive Manifest Platform",
+          "Adaptive Management Plane",
+          "Agent Model Protocol"
+        ]
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "supportedResources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "apps",
+          "agents",
+          "apis"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "agent": {
+      "$ref": "#/$defs/agent"
+    },
+    "identities": {
+      "type": "object",
+      "required": [
+        "users",
+        "companies"
+      ],
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/accountWithConnectors"
+          }
+        },
+        "companies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/accountWithConnectors"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "semantic": {
+      "type": "object",
+      "description": "Unified semantic layer for schemas consumed by AMP systems.",
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "required": [
+        "adaptiveCardVersions",
+        "flashcards"
+      ],
+      "properties": {
+        "adaptiveCardVersions": {
+          "type": "array",
+          "description": "Adaptive Card 2.1 is required and 1.6 compatibility is retained.",
+          "allOf": [
+            {
+              "contains": {
+                "const": "2.1"
+              }
+            },
+            {
+              "contains": {
+                "const": "1.6"
+              }
+            }
+          ],
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "tiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tile"
+          }
+        },
+        "mcpUiApps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "flashcards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/flashcard"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "connector": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "accountWithConnectors": {
+      "type": "object",
+      "required": [
+        "id",
+        "approvedConnectors"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvedConnectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/connector"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "model",
+        "task",
+        "tools",
+        "workflow"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Every agent has a required identifier.",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "object",
+          "required": [
+            "provider",
+            "name"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workflow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tile": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "dataStream"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "dataStream": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "flashcard": {
+      "type": "object",
+      "required": [
+        "id",
+        "front",
+        "back",
+        "dataLayers"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "front": {
+          "type": "object",
+          "required": [
+            "ui"
+          ],
+          "properties": {
+            "ui": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "back": {
+          "type": "object",
+          "required": [
+            "schema"
+          ],
+          "properties": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "dataLayers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "amp": "AMP",
+  "protocol": [
+    "Agent Manifest Protocol",
+    "Adaptive Manifest Protocol",
+    "Adaptive Manifest Platform",
+    "Adaptive Management Plane",
+    "Agent Model Protocol"
+  ],
+  "supportedResources": [
+    "apps",
+    "agents",
+    "apis"
+  ],
+  "agent": {
+    "id": "agent.customer-support.v1",
+    "name": "Customer Support Agent",
+    "model": {
+      "provider": "openai",
+      "name": "gpt-4.1"
+    },
+    "task": "Answer support questions using approved connectors.",
+    "tools": [
+      "knowledge.search",
+      "ticket.create"
+    ],
+    "workflow": [
+      "classify",
+      "retrieve",
+      "respond"
+    ]
+  },
+  "identities": {
+    "users": [
+      {
+        "id": "user_123",
+        "approvedConnectors": [
+          {
+            "id": "confluence",
+            "name": "Confluence",
+            "scopes": [
+              "read:pages"
+            ]
+          }
+        ]
+      }
+    ],
+    "companies": [
+      {
+        "id": "company_acme",
+        "approvedConnectors": [
+          {
+            "id": "salesforce",
+            "name": "Salesforce",
+            "scopes": [
+              "read:accounts",
+              "read:cases"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "semantic": {
+    "entities": [
+      "agent",
+      "user",
+      "company",
+      "connector",
+      "task",
+      "tool",
+      "workflow",
+      "tile",
+      "flashcard"
+    ],
+    "relationships": [
+      "agent_uses_connector",
+      "identity_approves_connector",
+      "tile_streams_data",
+      "flashcard_maps_ui_to_schema"
+    ]
+  },
+  "ui": {
+    "adaptiveCardVersions": [
+      "2.1",
+      "1.6"
+    ],
+    "tiles": [
+      {
+        "id": "ops-livetile-1",
+        "type": "adaptive-tile",
+        "dataStream": "events://amp/ops"
+      }
+    ],
+    "mcpUiApps": [
+      "amp-dashboard"
+    ],
+    "flashcards": [
+      {
+        "id": "flashcard.agent.customer-support",
+        "front": {
+          "ui": "Adaptive Card summary for support runbook"
+        },
+        "back": {
+          "schema": "#/$defs/agent"
+        },
+        "dataLayers": [
+          {
+            "name": "profile",
+            "source": "db://agents/customer-support"
+          },
+          {
+            "name": "runtime",
+            "source": "stream://agents/customer-support/events"
+          }
+        ]
+      }
+    ]
+  }
+}
