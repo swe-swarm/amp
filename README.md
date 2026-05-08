@@ -20,5 +20,5 @@ AMP is a schema-driven framework for defining agents, apps, APIs, and management
 
 See:
 
-- `/home/runner/work/amp/amp/schemas/amp.manifest.schema.json`
-- `/home/runner/work/amp/amp/examples/amp.manifest.example.json`
+- `schemas/amp.manifest.schema.json`
+- `examples/amp.manifest.example.json`
