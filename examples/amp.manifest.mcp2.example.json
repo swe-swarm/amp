@@ -1,0 +1,189 @@
+{
+  "amp": "AMP",
+  "version": "1.1.0",
+  "protocol": [
+    "Agent Manifest Protocol",
+    "Adaptive Manifest Protocol",
+    "Agent Model Protocol"
+  ],
+  "supportedResources": [
+    "apps",
+    "agents",
+    "apis"
+  ],
+  "protocols": {
+    "mcp": {
+      "specification": "https://modelcontextprotocol.io",
+      "supportedProtocolVersions": ["2026-07-28"],
+      "preferredProtocolVersion": "2026-07-28",
+      "era": "modern",
+      "stateless": true,
+      "transports": {
+        "streamableHttp": {
+          "enabled": true,
+          "endpoint": "https://mcp.example.com/mcp",
+          "mode": "stateless",
+          "httpMethods": ["POST"],
+          "accept": ["application/json", "text/event-stream"],
+          "headers": {
+            "protocolVersion": "MCP-Protocol-Version",
+            "method": "Mcp-Method",
+            "name": "Mcp-Name",
+            "sessionId": null
+          },
+          "sessions": false,
+          "getStream": false,
+          "lastEventId": false,
+          "subscriptionsListen": true,
+          "originValidation": true
+        }
+      },
+      "requestMeta": {
+        "protocolVersion": "io.modelcontextprotocol/protocolVersion",
+        "clientCapabilities": "io.modelcontextprotocol/clientCapabilities",
+        "clientInfo": "io.modelcontextprotocol/clientInfo",
+        "serverInfo": "io.modelcontextprotocol/serverInfo"
+      },
+      "methods": {
+        "modern": [
+          "server/discover",
+          "tools/list",
+          "tools/call",
+          "resources/list",
+          "resources/read",
+          "subscriptions/listen"
+        ]
+      },
+      "resultTypes": ["complete", "input_required"],
+      "extensions": {
+        "io.modelcontextprotocol/ui": {
+          "mimeTypes": ["text/html;profile=mcp-app"]
+        }
+      },
+      "cacheableResults": {
+        "ttlMs": 30000,
+        "cacheScope": "public"
+      }
+    },
+    "mcpApps": {
+      "sep": "1865",
+      "extensionId": "io.modelcontextprotocol/ui",
+      "status": "stable",
+      "specification": "2026-01-26",
+      "specificationUrl": "https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx",
+      "mimeTypes": ["text/html;profile=mcp-app"],
+      "uriScheme": "ui://",
+      "transport": "postMessage",
+      "lifecycle": [
+        "ui/initialize",
+        "ui/notifications/initialized"
+      ],
+      "displayModes": ["inline"],
+      "resources": [
+        {
+          "uri": "ui://weather/dashboard",
+          "name": "weather_dashboard",
+          "mimeType": "text/html;profile=mcp-app",
+          "toolName": "get_weather",
+          "visibility": ["model", "app"]
+        }
+      ]
+    }
+  },
+  "agent": {
+    "id": "agent.weather.v1",
+    "name": "Weather Agent",
+    "model": {
+      "provider": "openai",
+      "name": "gpt-4.1-mini"
+    },
+    "task": "Answer weather questions and render an MCP App dashboard.",
+    "tools": [
+      {
+        "name": "get_weather",
+        "description": "Get current weather for a location.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "location": { "type": "string" }
+          },
+          "required": ["location"]
+        },
+        "_meta": {
+          "ui": {
+            "resourceUri": "ui://weather/dashboard",
+            "visibility": ["model", "app"]
+          }
+        }
+      }
+    ],
+    "workflow": [
+      "lookup",
+      "render"
+    ],
+    "bindings": {
+      "mcpServers": [
+        {
+          "name": "weather",
+          "protocolVersions": ["2026-07-28"],
+          "transport": "streamable-http",
+          "endpoint": "https://mcp.example.com/mcp",
+          "era": "modern"
+        }
+      ]
+    }
+  },
+  "identities": {
+    "users": [
+      {
+        "id": "user_weather",
+        "approvedConnectors": [
+          {
+            "id": "openweather",
+            "name": "OpenWeather",
+            "scopes": [
+              "read:current"
+            ]
+          }
+        ]
+      }
+    ],
+    "companies": [
+      {
+        "id": "company_acme",
+        "approvedConnectors": []
+      }
+    ]
+  },
+  "ui": {
+    "adaptiveCardVersions": [
+      "2.1",
+      "1.6"
+    ],
+    "mcpUiApps": [
+      {
+        "uri": "ui://weather/dashboard",
+        "name": "weather_dashboard",
+        "mimeType": "text/html;profile=mcp-app",
+        "toolName": "get_weather"
+      }
+    ],
+    "flashcards": [
+      {
+        "id": "flashcard.agent.weather",
+        "front": {
+          "ui": "Adaptive Card weather summary"
+        },
+        "back": {
+          "schema": "#/$defs/agent"
+        },
+        "dataLayers": [
+          {
+            "name": "forecast",
+            "source": "https://mcp.example.com/mcp"
+          }
+        ]
+      }
+    ]
+  }
+}

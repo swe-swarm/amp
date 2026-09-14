@@ -1,0 +1,217 @@
+{
+  "amp": "AMP",
+  "version": "1.1.0",
+  "protocol": [
+    "Agent Manifest Protocol",
+    "Agent Model Protocol"
+  ],
+  "supportedResources": [
+    "agents"
+  ],
+  "protocols": {
+    "agentClientProtocol": {
+      "specification": "https://agentclientprotocol.com",
+      "supportedProtocolVersions": [1],
+      "preferredProtocolVersion": 1,
+      "role": "agent",
+      "info": {
+        "name": "amp-reviewer",
+        "title": "Code Review Agent",
+        "version": "1.0.0"
+      },
+      "transports": [
+        {
+          "kind": "stdio",
+          "status": "stable",
+          "command": "amp-reviewer"
+        }
+      ],
+      "v1": {
+        "protocolVersion": 1,
+        "status": "stable",
+        "schema": "https://agentclientprotocol.com/protocol/v1/schema",
+        "methods": [
+          "initialize",
+          "session/new",
+          "session/prompt",
+          "session/cancel"
+        ],
+        "agentCapabilities": {
+          "loadSession": false,
+          "promptCapabilities": {
+            "image": false,
+            "audio": false,
+            "embeddedContext": true
+          },
+          "mcpCapabilities": {
+            "http": false,
+            "sse": false
+          }
+        }
+      }
+    },
+    "activityProtocol": {
+      "specification": "https://github.com/microsoft/Agents/blob/main/specs/activity/protocol-activity.md",
+      "baseline": "3.4",
+      "supportedVersions": ["3.4"],
+      "role": "agent",
+      "activityTypes": [
+        "message",
+        "typing",
+        "endOfConversation"
+      ],
+      "v3": {
+        "status": "provisional",
+        "serializableJson": true,
+        "unknownFieldsAccepted": true
+      }
+    },
+    "mcp": {
+      "specification": "https://modelcontextprotocol.io",
+      "supportedProtocolVersions": ["2025-06-18"],
+      "preferredProtocolVersion": "2025-06-18",
+      "era": "legacy",
+      "stateless": false,
+      "transports": {
+        "stdio": {
+          "enabled": true,
+          "command": "amp-mcp-legacy"
+        },
+        "streamableHttp": {
+          "enabled": true,
+          "endpoint": "https://mcp-legacy.example.com/mcp",
+          "mode": "session",
+          "httpMethods": ["POST", "GET", "DELETE"],
+          "accept": ["application/json", "text/event-stream"],
+          "headers": {
+            "protocolVersion": "MCP-Protocol-Version",
+            "sessionId": "Mcp-Session-Id"
+          },
+          "sessions": true,
+          "getStream": true,
+          "lastEventId": true,
+          "subscriptionsListen": false,
+          "originValidation": true
+        }
+      },
+      "methods": {
+        "legacy": [
+          "initialize",
+          "notifications/initialized",
+          "ping",
+          "resources/subscribe",
+          "resources/unsubscribe",
+          "notifications/cancelled"
+        ]
+      },
+      "capabilities": {
+        "tools": {
+          "listChanged": true
+        },
+        "resources": {
+          "subscribe": true,
+          "listChanged": true
+        }
+      }
+    }
+  },
+  "agent": {
+    "id": "agent.code-review.v1",
+    "name": "Code Review Agent",
+    "model": {
+      "provider": "anthropic",
+      "name": "claude-sonnet-4"
+    },
+    "task": "Review pull requests using approved repository connectors.",
+    "tools": [
+      "repo.diff",
+      "repo.comment"
+    ],
+    "workflow": [
+      "checkout",
+      "analyze",
+      "comment"
+    ],
+    "bindings": {
+      "agentClientProtocol": {
+        "role": "agent",
+        "protocolVersions": [1]
+      },
+      "mcpServers": [
+        {
+          "name": "repo-tools",
+          "protocolVersions": ["2025-06-18"],
+          "transport": "stdio",
+          "command": "repo-mcp",
+          "era": "legacy"
+        }
+      ]
+    }
+  },
+  "identities": {
+    "users": [
+      {
+        "id": "user_reviewer",
+        "approvedConnectors": [
+          {
+            "id": "github",
+            "name": "GitHub",
+            "scopes": [
+              "repo"
+            ]
+          }
+        ]
+      }
+    ],
+    "companies": [
+      {
+        "id": "company_acme",
+        "approvedConnectors": [
+          {
+            "id": "github",
+            "name": "GitHub",
+            "scopes": [
+              "repo"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "semantic": {
+    "entities": [
+      "agent",
+      "connector",
+      "tool"
+    ],
+    "relationships": [
+      "agent_uses_connector"
+    ]
+  },
+  "ui": {
+    "adaptiveCardVersions": [
+      "2.1",
+      "1.6"
+    ],
+    "mcpUiApps": [
+      "review-summary"
+    ],
+    "flashcards": [
+      {
+        "id": "flashcard.agent.code-review",
+        "front": {
+          "ui": "Adaptive Card summary for review findings"
+        },
+        "back": {
+          "schema": "#/$defs/agent"
+        },
+        "dataLayers": [
+          {
+            "name": "findings",
+            "source": "stream://agents/code-review/findings"
+          }
+        ]
+      }
+    ]
+  }
+}
