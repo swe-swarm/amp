@@ -1,0 +1,31 @@
+{
+  "amp": "AMP",
+  "version": "1.1.0",
+  "protocol": ["Agent Manifest Protocol"],
+  "agent": {
+    "id": "agent.x",
+    "name": "X",
+    "model": { "provider": "openai", "name": "gpt-4.1" },
+    "task": "test",
+    "tools": [],
+    "workflow": []
+  },
+  "identities": { "users": [], "companies": [] },
+  "ui": {
+    "adaptiveCardVersions": ["2.1", "1.6"],
+    "mcpUiApps": [
+      {
+        "uri": "https://example.com/not-ui",
+        "mimeType": "text/html;profile=mcp-app"
+      }
+    ],
+    "flashcards": [
+      {
+        "id": "f",
+        "front": { "ui": "x" },
+        "back": { "schema": "#/$defs/agent" },
+        "dataLayers": [{ "name": "n" }]
+      }
+    ]
+  }
+}

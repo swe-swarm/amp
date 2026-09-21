@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://swe-swarm.github.io/amp/schemas/amp.manifest.schema.json",
   "title": "AMP Manifest",
-  "description": "Unified semantic schema for the Agent Manifest Protocol ecosystem.",
+  "description": "Unified semantic schema for the Agent Manifest Protocol ecosystem. Version 1.0 captures AMP expansions, identities, connectors, agent spec, and Adaptive Card flashcards. Version 1.1 extends a conforming manifest so it can declare and version Agent Client Protocol (stable v1 and draft v2), Activity Protocol (provisional 3.4 baseline with optional v5), MCP 2.0 (2026-07-28 streamable HTTP and stateless MCP) with 2025-06-18 backward compatibility, and MCP Apps (SEP-1865).",
   "type": "object",
   "required": [
     "amp",
@@ -16,8 +16,14 @@
       "type": "string",
       "const": "AMP"
     },
+    "version": {
+      "type": "string",
+      "description": "AMP spec version of this manifest document. Omit or use 1.0.0 for the original shape. Use 1.1.0 when declaring interop protocols.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
     "protocol": {
       "type": "array",
+      "description": "AMP expansions implemented by this manifest. Interop wire protocols (ACP, Activity, MCP, MCP Apps) are declared and versioned under `protocols`, not here.",
       "items": {
         "type": "string",
         "enum": [
@@ -42,6 +48,9 @@
         ]
       },
       "uniqueItems": true
+    },
+    "protocols": {
+      "$ref": "#/$defs/interopProtocols"
     },
     "agent": {
       "$ref": "#/$defs/agent"
@@ -122,8 +131,17 @@
         },
         "mcpUiApps": {
           "type": "array",
+          "description": "Legacy string names remain valid. Object entries declare SEP-1865 MCP Apps (`ui://` resources, `text/html;profile=mcp-app`).",
           "items": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/mcpAppRef"
+              }
+            ]
           }
         },
         "flashcards": {
@@ -138,6 +156,30 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementationInfo": {
+      "type": "object",
+      "description": "Implementation metadata exchanged during ACP initialize or MCP _meta clientInfo/serverInfo.",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "title": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "additionalProperties": false
+    },
     "connector": {
       "type": "object",
       "required": [
@@ -146,18 +188,19 @@
       ],
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonEmptyString"
         },
         "name": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonEmptyString"
         },
         "scopes": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "mcp": {
+          "$ref": "#/$defs/mcpServerBinding"
         }
       },
       "additionalProperties": false
@@ -170,8 +213,7 @@
       ],
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonEmptyString"
         },
         "approvedConnectors": {
           "type": "array",
@@ -199,8 +241,7 @@
           "minLength": 1
         },
         "name": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonEmptyString"
         },
         "model": {
           "type": "object",
@@ -210,24 +251,29 @@
           ],
           "properties": {
             "provider": {
-              "type": "string",
-              "minLength": 1
+              "$ref": "#/$defs/nonEmptyString"
             },
             "name": {
-              "type": "string",
-              "minLength": 1
+              "$ref": "#/$defs/nonEmptyString"
             }
           },
           "additionalProperties": false
         },
         "task": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonEmptyString"
         },
         "tools": {
           "type": "array",
+          "description": "Tool names as strings remain valid. Object entries may attach MCP input schemas and SEP-1865 `_meta.ui` linkage.",
           "items": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/toolDescriptor"
+              }
+            ]
           }
         },
         "workflow": {
@@ -235,6 +281,165 @@
           "items": {
             "type": "string"
           }
+        },
+        "bindings": {
+          "$ref": "#/$defs/agentProtocolBindings"
+        }
+      },
+      "additionalProperties": false
+    },
+    "toolDescriptor": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "type": "string"
+        },
+        "inputSchema": {
+          "type": "object",
+          "description": "JSON Schema 2020-12 input schema as used by MCP tools/list."
+        },
+        "outputSchema": {
+          "type": "object"
+        },
+        "_meta": {
+          "type": "object",
+          "description": "MCP tool metadata. Prefer `_meta.ui.resourceUri` (SEP-1865). The flat `_meta[\"ui/resourceUri\"]` key is deprecated.",
+          "properties": {
+            "ui": {
+              "$ref": "#/$defs/mcpUiToolMeta"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpUiToolMeta": {
+      "type": "object",
+      "properties": {
+        "resourceUri": {
+          "type": "string",
+          "description": "UI resource for rendering tool results. MUST use the ui:// scheme.",
+          "pattern": "^ui://"
+        },
+        "visibility": {
+          "type": "array",
+          "description": "Who can access this tool. Default in SEP-1865 is [\"model\", \"app\"].",
+          "items": {
+            "type": "string",
+            "enum": [
+              "model",
+              "app"
+            ]
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "agentProtocolBindings": {
+      "type": "object",
+      "description": "Per-agent bindings to declared interop protocols. Version matrices live on `protocols`; this object points the agent at concrete endpoints and roles.",
+      "properties": {
+        "agentClientProtocol": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "client",
+                "both"
+              ]
+            },
+            "protocolVersions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/acpProtocolVersion"
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "info": {
+              "$ref": "#/$defs/implementationInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        "activityProtocol": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "client",
+                "channel"
+              ]
+            },
+            "endpoint": {
+              "type": "string",
+              "description": "Programmatically addressable location where the Agent or channel receives activities."
+            },
+            "channelId": {
+              "type": "string",
+              "description": "Activity Protocol channelId, for example msteams or webchat."
+            }
+          },
+          "additionalProperties": false
+        },
+        "mcpServers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mcpServerBinding"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpServerBinding": {
+      "type": "object",
+      "required": [
+        "name",
+        "transport"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "protocolVersions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mcpProtocolVersion"
+          },
+          "uniqueItems": true
+        },
+        "transport": {
+          "$ref": "#/$defs/mcpTransportKind"
+        },
+        "command": {
+          "type": "string",
+          "description": "Subprocess command for stdio transport."
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Single MCP HTTP endpoint path, for example https://example.com/mcp."
+        },
+        "era": {
+          "$ref": "#/$defs/mcpEra"
         }
       },
       "additionalProperties": false
@@ -269,8 +474,7 @@
       ],
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/nonEmptyString"
         },
         "front": {
           "type": "object",
@@ -312,6 +516,1374 @@
               }
             },
             "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpAppRef": {
+      "type": "object",
+      "description": "SEP-1865 MCP App UI resource referenced from the AMP UI surface.",
+      "required": [
+        "uri"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "pattern": "^ui://",
+          "description": "Unique UI resource identifier. MUST use the ui:// scheme."
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "mimeType": {
+          "$ref": "#/$defs/mcpAppMimeType"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "Tool whose `_meta.ui.resourceUri` points at this resource."
+        },
+        "visibility": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "model",
+              "app"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "csp": {
+          "$ref": "#/$defs/mcpUiCsp"
+        },
+        "permissions": {
+          "$ref": "#/$defs/mcpUiPermissions"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "prefersBorder": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpAppMimeType": {
+      "type": "string",
+      "const": "text/html;profile=mcp-app",
+      "description": "Initial MCP Apps content type. Other types are reserved for future extensions."
+    },
+    "mcpUiCsp": {
+      "type": "object",
+      "description": "Content Security Policy origins declared by an MCP App. Hosts MUST NOT allow undeclared domains.",
+      "properties": {
+        "connectDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resourceDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "frameDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "baseUriDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpUiPermissions": {
+      "type": "object",
+      "description": "Sandbox Permission Policy features requested by an MCP App.",
+      "properties": {
+        "camera": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "microphone": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "geolocation": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "clipboardWrite": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "interopProtocols": {
+      "type": "object",
+      "description": "Versioned declarations of interop protocols a conforming AMP agent, app, or API speaks. Existing AMP expansions stay in `protocol`.",
+      "minProperties": 1,
+      "properties": {
+        "agentClientProtocol": {
+          "$ref": "#/$defs/acpDeclaration"
+        },
+        "activityProtocol": {
+          "$ref": "#/$defs/activityDeclaration"
+        },
+        "mcp": {
+          "$ref": "#/$defs/mcpDeclaration"
+        },
+        "mcpApps": {
+          "$ref": "#/$defs/mcpAppsDeclaration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "acpProtocolVersion": {
+      "type": "integer",
+      "enum": [
+        1,
+        2
+      ],
+      "description": "ACP initialize `protocolVersion` integer. 1 is the current stable wire version. 2 is draft."
+    },
+    "acpDeclaration": {
+      "type": "object",
+      "description": "Agent Client Protocol declaration. Stable v1 plus optional draft v2 (protocolVersion 2). See https://agentclientprotocol.com.",
+      "required": [
+        "supportedProtocolVersions"
+      ],
+      "properties": {
+        "specification": {
+          "type": "string",
+          "const": "https://agentclientprotocol.com",
+          "description": "Canonical ACP documentation root."
+        },
+        "supportedProtocolVersions": {
+          "type": "array",
+          "description": "ACP `initialize` protocolVersion integers this peer can negotiate. Implementers SHOULD keep v1 when adding draft v2.",
+          "items": {
+            "$ref": "#/$defs/acpProtocolVersion"
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "preferredProtocolVersion": {
+          "$ref": "#/$defs/acpProtocolVersion"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "agent",
+            "client",
+            "both"
+          ]
+        },
+        "info": {
+          "$ref": "#/$defs/implementationInfo"
+        },
+        "authMethods": {
+          "type": "array",
+          "description": "Authentication methods advertised in ACP initialize. A non-empty list requires auth/login and auth/logout (v2) or authenticate (v1).",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "name": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "transports": {
+          "type": "array",
+          "description": "ACP transports. stdio is the stable default. Streamable HTTP and WebSocket are draft / RFD.",
+          "items": {
+            "$ref": "#/$defs/acpTransport"
+          },
+          "minItems": 1
+        },
+        "v1": {
+          "$ref": "#/$defs/acpV1Profile"
+        },
+        "v2": {
+          "$ref": "#/$defs/acpV2Profile"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "supportedProtocolVersions": {
+                "contains": {
+                  "const": 2
+                }
+              }
+            },
+            "required": [
+              "supportedProtocolVersions"
+            ]
+          },
+          "then": {
+            "required": [
+              "v2"
+            ]
+          }
+        }
+      ]
+    },
+    "acpTransport": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "stdio",
+            "streamable-http",
+            "websocket",
+            "custom"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "stable",
+            "draft",
+            "custom"
+          ],
+          "description": "stdio is stable. streamable-http and websocket are draft (ACP Transports WG / RFD)."
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "endpoint": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "acpV1Profile": {
+      "type": "object",
+      "description": "Stable ACP v1 profile. protocolVersion 1. Capabilities map to AgentCapabilities / ClientCapabilities from the v1 schema.",
+      "required": [
+        "protocolVersion",
+        "status"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "status": {
+          "type": "string",
+          "const": "stable"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Published ACP v1 JSON Schema URI or release artifact, for example schema/v1/schema.json."
+        },
+        "methods": {
+          "type": "array",
+          "description": "Baseline and optional v1 methods this peer implements.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "initialize",
+              "authenticate",
+              "logout",
+              "session/new",
+              "session/load",
+              "session/list",
+              "session/delete",
+              "session/prompt",
+              "session/cancel",
+              "session/close",
+              "session/resume",
+              "fs/read_text_file",
+              "fs/write_text_file",
+              "terminal/create",
+              "terminal/output",
+              "terminal/kill",
+              "elicitation/create"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "agentCapabilities": {
+          "type": "object",
+          "properties": {
+            "loadSession": {
+              "type": "boolean"
+            },
+            "promptCapabilities": {
+              "type": "object",
+              "properties": {
+                "image": {
+                  "type": "boolean"
+                },
+                "audio": {
+                  "type": "boolean"
+                },
+                "embeddedContext": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "mcpCapabilities": {
+              "type": "object",
+              "description": "ACP v1 MCP-over-session transports the agent can launch.",
+              "properties": {
+                "http": {
+                  "type": "boolean"
+                },
+                "sse": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "clientCapabilities": {
+          "type": "object",
+          "properties": {
+            "fs": {
+              "type": "object",
+              "properties": {
+                "readTextFile": {
+                  "type": "boolean"
+                },
+                "writeTextFile": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "terminal": {
+              "type": "boolean"
+            },
+            "elicitation": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "acpV2Profile": {
+      "type": "object",
+      "description": "Draft ACP v2 profile. protocolVersion 2. Breaking session and update semantics; do not treat as a drop-in for v1.",
+      "required": [
+        "protocolVersion",
+        "status"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "integer",
+          "const": 2
+        },
+        "status": {
+          "type": "string",
+          "const": "draft"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Published ACP v2 JSON Schema URI or release artifact (v2.0.0-alphaX)."
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "initialize",
+              "auth/login",
+              "auth/logout",
+              "session/new",
+              "session/prompt",
+              "session/list",
+              "session/resume",
+              "session/close",
+              "session/cancel",
+              "session/delete",
+              "elicitation/create"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "agentCapabilities": {
+          "type": "object",
+          "description": "ACP v2 initialize AgentCapabilities. Session surfaces nest prompt and MCP transports.",
+          "properties": {
+            "session": {
+              "type": "object",
+              "properties": {
+                "prompt": {
+                  "type": "object",
+                  "properties": {
+                    "image": {
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "audio": {
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "embeddedContext": {
+                      "type": "object",
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "mcp": {
+                  "type": "object",
+                  "properties": {
+                    "stdio": {
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "http": {
+                      "type": "object",
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "features": {
+          "type": "array",
+          "description": "Draft v2 behavioral surfaces from the v2 RFDs and migration guide.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "prompt-lifecycle",
+              "message-updates-and-chunks",
+              "session-resume-replay",
+              "permission-requests",
+              "plan-variants",
+              "tool-call-updates",
+              "diff-file-states",
+              "required-session-methods"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "activityVersion": {
+      "type": "string",
+      "enum": [
+        "3.4",
+        "5"
+      ]
+    },
+    "activityType34": {
+      "type": "string",
+      "enum": [
+        "message",
+        "contactRelationUpdate",
+        "conversationUpdate",
+        "endOfConversation",
+        "event",
+        "invoke",
+        "installationUpdate",
+        "messageDelete",
+        "messageUpdate",
+        "messageReaction",
+        "suggestion",
+        "trace",
+        "typing",
+        "handoff",
+        "command",
+        "commandResult"
+      ]
+    },
+    "activityDeclaration": {
+      "type": "object",
+      "description": "Microsoft Agents Activity Protocol. Provisional 3.4 is the required baseline. Schema v5 (payload-first envelope, v: \"5\") is an optional extension that MUST coexist with 3.4 during transition.",
+      "required": [
+        "baseline",
+        "supportedVersions"
+      ],
+      "properties": {
+        "specification": {
+          "type": "string",
+          "const": "https://github.com/microsoft/Agents/blob/main/specs/activity/protocol-activity.md"
+        },
+        "baseline": {
+          "type": "string",
+          "const": "3.4",
+          "description": "Provisional Activity Protocol 3.4 is the AMP baseline. Receivers that omit `v` or send a non-\"5\" value are treated as v3.4."
+        },
+        "supportedVersions": {
+          "type": "array",
+          "description": "Declared Activity Protocol versions. MUST include the 3.4 baseline. \"5\" opts into the v5 envelope.",
+          "items": {
+            "$ref": "#/$defs/activityVersion"
+          },
+          "uniqueItems": true,
+          "minItems": 1,
+          "allOf": [
+            {
+              "contains": {
+                "const": "3.4"
+              }
+            }
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "agent",
+            "client",
+            "channel"
+          ]
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "activityTypes": {
+          "type": "array",
+          "description": "v3.4 activity type values this peer understands. Application-layer types MAY also be listed as additional strings via customActivityTypes.",
+          "items": {
+            "$ref": "#/$defs/activityType34"
+          },
+          "uniqueItems": true
+        },
+        "customActivityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "channelId"
+            ],
+            "properties": {
+              "channelId": {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "v3": {
+          "$ref": "#/$defs/activityV34Profile"
+        },
+        "v5": {
+          "$ref": "#/$defs/activityV5Extension"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "supportedVersions": {
+                "contains": {
+                  "const": "5"
+                }
+              }
+            },
+            "required": [
+              "supportedVersions"
+            ]
+          },
+          "then": {
+            "required": [
+              "v5"
+            ]
+          }
+        }
+      ]
+    },
+    "activityV34Profile": {
+      "type": "object",
+      "description": "Provisional 3.4 baseline profile. Activities are a flat JSON object with a type discriminator; channels master id and timestamp.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "provisional"
+        },
+        "serializableJson": {
+          "type": "boolean",
+          "description": "A2001: activities MUST be serializable to JSON (RFC 4627)."
+        },
+        "unknownFieldsAccepted": {
+          "type": "boolean",
+          "description": "A2005: receivers MUST accept fields they do not understand."
+        },
+        "coreFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "type",
+              "channelId",
+              "id",
+              "timestamp",
+              "localTimestamp",
+              "localTimezone",
+              "from",
+              "recipient",
+              "conversation",
+              "text",
+              "attachments",
+              "entities",
+              "replyToId",
+              "relatesTo",
+              "value",
+              "name",
+              "code"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "activityV5Extension": {
+      "type": "object",
+      "description": "Optional Activity Protocol Schema v5 extension (Microsoft Agents issue #472). Minimal symmetric envelope: all modalities live in `payload`; typed `entities` are metadata only; correlation uses `relatesTo`. Senders MUST set `v` to \"5\".",
+      "required": [
+        "enabled",
+        "marker"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "marker": {
+          "type": "string",
+          "const": "5",
+          "description": "Normative `v` field value that triggers v5 schema parsing."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "committee-review"
+          ]
+        },
+        "envelope": {
+          "type": "string",
+          "const": "payload-first"
+        },
+        "requiredEnvelopeFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "v",
+              "type",
+              "id",
+              "timestamp",
+              "channelId",
+              "conversation",
+              "from",
+              "to",
+              "payload",
+              "entities",
+              "relatesTo"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "payloadContentTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Declared payload.contentType values, for example text/plain, text/markdown, application/vnd.microsoft.card.adaptive."
+        },
+        "supportedStreamTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entitiesMetadataOnly": {
+          "type": "boolean",
+          "description": "v5 typed entities carry metadata only (capabilities, locale, delegation, delivery hints)."
+        },
+        "relatesToGraph": {
+          "type": "boolean",
+          "description": "Replies, updates, deletes, tool calls, and streaming correlate via relatesTo rather than separate callbacks."
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpProtocolVersion": {
+      "type": "string",
+      "enum": [
+        "2026-07-28",
+        "2025-11-25",
+        "2025-06-18",
+        "2025-03-26"
+      ],
+      "description": "MCP protocol revision date. 2026-07-28 is MCP 2.0 (stateless / streamable). 2025-06-18 is the required backward-compat revision."
+    },
+    "mcpEra": {
+      "type": "string",
+      "enum": [
+        "modern",
+        "legacy",
+        "dual-era"
+      ],
+      "description": "modern = 2026-07-28+ per-request _meta, no initialize. legacy = 2025-11-25 and earlier initialize handshake. dual-era = both on the same endpoint."
+    },
+    "mcpTransportKind": {
+      "type": "string",
+      "enum": [
+        "stdio",
+        "streamable-http",
+        "http-sse",
+        "custom"
+      ]
+    },
+    "mcpDeclaration": {
+      "type": "object",
+      "description": "Model Context Protocol declaration. Prefer 2026-07-28 (MCP 2.0): stateless core, Streamable HTTP POST-only, request-scoped SSE, server/discover, MRTR. Dual-era peers MUST also list 2025-06-18 for initialize / Mcp-Session-Id compatibility.",
+      "required": [
+        "supportedProtocolVersions",
+        "era"
+      ],
+      "properties": {
+        "specification": {
+          "type": "string",
+          "const": "https://modelcontextprotocol.io"
+        },
+        "supportedProtocolVersions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mcpProtocolVersion"
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "preferredProtocolVersion": {
+          "$ref": "#/$defs/mcpProtocolVersion"
+        },
+        "era": {
+          "$ref": "#/$defs/mcpEra"
+        },
+        "stateless": {
+          "type": "boolean",
+          "description": "true when the peer speaks MCP 2.0 request/response without initialize or Mcp-Session-Id (SEP-2575, SEP-2567)."
+        },
+        "transports": {
+          "$ref": "#/$defs/mcpTransports"
+        },
+        "requestMeta": {
+          "$ref": "#/$defs/mcpRequestMeta"
+        },
+        "methods": {
+          "$ref": "#/$defs/mcpMethods"
+        },
+        "resultTypes": {
+          "type": "array",
+          "description": "2026-07-28 results carry required resultType. Clients MUST treat omitted resultType from earlier servers as complete.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "input_required"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "extensions": {
+          "type": "object",
+          "description": "Optional MCP extensions advertised in capabilities.extensions. Keys MUST be prefixed identifiers.",
+          "properties": {
+            "io.modelcontextprotocol/ui": {
+              "$ref": "#/$defs/mcpAppsExtensionSettings"
+            },
+            "io.modelcontextprotocol/tasks": {
+              "type": "object",
+              "description": "Official tasks extension (SEP-2663). Moved out of the MCP 2.0 core.",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "tools": {
+              "type": "object",
+              "properties": {
+                "listChanged": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "subscribe": {
+                  "type": "boolean"
+                },
+                "listChanged": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            },
+            "prompts": {
+              "type": "object",
+              "properties": {
+                "listChanged": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "cacheableResults": {
+          "type": "object",
+          "description": "SEP-2549 cache hints required on 2026-07-28 list/read results.",
+          "properties": {
+            "ttlMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cacheScope": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "era": {
+                "const": "modern"
+              }
+            },
+            "required": [
+              "era"
+            ]
+          },
+          "then": {
+            "properties": {
+              "supportedProtocolVersions": {
+                "contains": {
+                  "const": "2026-07-28"
+                }
+              },
+              "stateless": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "era": {
+                "const": "legacy"
+              }
+            },
+            "required": [
+              "era"
+            ]
+          },
+          "then": {
+            "properties": {
+              "supportedProtocolVersions": {
+                "contains": {
+                  "const": "2025-06-18"
+                }
+              },
+              "stateless": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "era": {
+                "const": "dual-era"
+              }
+            },
+            "required": [
+              "era"
+            ]
+          },
+          "then": {
+            "properties": {
+              "supportedProtocolVersions": {
+                "allOf": [
+                  {
+                    "contains": {
+                      "const": "2026-07-28"
+                    }
+                  },
+                  {
+                    "contains": {
+                      "const": "2025-06-18"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mcpTransports": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "stdio": {
+          "type": "object",
+          "description": "Newline-delimited JSON-RPC over a client-launched subprocess. On 2026-07-28, clients MAY probe with server/discover before falling back to initialize.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "command": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "streamableHttp": {
+          "$ref": "#/$defs/mcpStreamableHttp"
+        },
+        "httpSse": {
+          "type": "object",
+          "description": "Deprecated HTTP+SSE transport from protocol version 2024-11-05 (SEP-2596). Dual-era servers MAY keep it for older clients.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "deprecated": {
+              "type": "boolean",
+              "const": true
+            },
+            "sseEndpoint": {
+              "type": "string"
+            },
+            "postEndpoint": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "custom": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpStreamableHttp": {
+      "type": "object",
+      "description": "Streamable HTTP binding. 2026-07-28: single POST endpoint, no GET stream, no Mcp-Session-Id, request-scoped SSE, required Mcp-Method / Mcp-Name / MCP-Protocol-Version headers. 2025-06-18: POST+GET, optional sessions, initialize handshake.",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Single MCP HTTP endpoint, for example https://example.com/mcp."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "stateless",
+            "session",
+            "dual-era"
+          ],
+          "description": "stateless = 2026-07-28 POST-only. session = 2025-06-18 optional Mcp-Session-Id. dual-era = both detection paths on one origin."
+        },
+        "httpMethods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "POST",
+              "GET",
+              "DELETE"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "2026-07-28 requires POST only. 2025-06-18 uses POST and optional GET (SSE listen) plus optional DELETE (session end)."
+        },
+        "accept": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "application/json",
+              "text/event-stream"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "headers": {
+          "type": "object",
+          "description": "Required or optional Streamable HTTP headers for the declared revisions.",
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "const": "MCP-Protocol-Version"
+            },
+            "method": {
+              "type": "string",
+              "const": "Mcp-Method",
+              "description": "Required on 2026-07-28 POST requests (SEP-2243)."
+            },
+            "name": {
+              "type": "string",
+              "const": "Mcp-Name",
+              "description": "Required on 2026-07-28 tools/call, resources/read, and prompts/get."
+            },
+            "sessionId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Mcp-Session-Id for 2025-06-18 sessionful servers. MUST be null/omitted for stateless 2026-07-28."
+            }
+          },
+          "additionalProperties": false
+        },
+        "sessions": {
+          "type": "boolean",
+          "description": "false for 2026-07-28 (protocol-level sessions removed). true when a 2025-06-18 peer may mint Mcp-Session-Id."
+        },
+        "getStream": {
+          "type": "boolean",
+          "description": "Standalone GET SSE stream. Removed in 2026-07-28; used by 2025-06-18."
+        },
+        "lastEventId": {
+          "type": "boolean",
+          "description": "SSE resumability via Last-Event-ID. Removed in 2026-07-28; optional in 2025-06-18."
+        },
+        "subscriptionsListen": {
+          "type": "boolean",
+          "description": "2026-07-28 subscriptions/listen long-lived POST-response stream."
+        },
+        "originValidation": {
+          "type": "boolean",
+          "description": "Servers MUST validate Origin to prevent DNS rebinding."
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpRequestMeta": {
+      "type": "object",
+      "description": "Per-request `_meta` keys for modern MCP (2026-07-28). The HTTP binding also mirrors version into MCP-Protocol-Version.",
+      "properties": {
+        "protocolVersion": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/protocolVersion"
+        },
+        "clientCapabilities": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/clientCapabilities"
+        },
+        "clientInfo": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/clientInfo"
+        },
+        "serverInfo": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/serverInfo"
+        },
+        "logLevel": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/logLevel"
+        },
+        "subscriptionId": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/subscriptionId"
+        },
+        "traceContext": {
+          "type": "array",
+          "description": "W3C Trace Context keys reserved inside _meta (SEP-414).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "traceparent",
+              "tracestate",
+              "baggage"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpMethods": {
+      "type": "object",
+      "properties": {
+        "modern": {
+          "type": "array",
+          "description": "2026-07-28 methods. server/discover is REQUIRED for servers.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "server/discover",
+              "tools/list",
+              "tools/call",
+              "resources/list",
+              "resources/read",
+              "resources/templates/list",
+              "prompts/list",
+              "prompts/get",
+              "subscriptions/listen",
+              "tasks/get",
+              "tasks/update"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "legacy": {
+          "type": "array",
+          "description": "2025-06-18 and other initialize-era methods retained for dual-era / backward-compat peers.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "initialize",
+              "notifications/initialized",
+              "ping",
+              "logging/setLevel",
+              "resources/subscribe",
+              "resources/unsubscribe",
+              "notifications/cancelled",
+              "completion/complete",
+              "roots/list",
+              "sampling/createMessage",
+              "elicitation/create"
+            ]
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "mcpAppsExtensionSettings": {
+      "type": "object",
+      "description": "capabilities.extensions[\"io.modelcontextprotocol/ui\"] settings object from SEP-1865.",
+      "properties": {
+        "mimeTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mcpAppMimeType"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "mcpAppsDeclaration": {
+      "type": "object",
+      "description": "MCP Apps (SEP-1865). Optional MCP extension that delivers interactive HTML UIs via ui:// resources, tool `_meta.ui` linkage, and postMessage JSON-RPC (`ui/initialize`).",
+      "required": [
+        "extensionId",
+        "sep"
+      ],
+      "properties": {
+        "sep": {
+          "type": "string",
+          "const": "1865"
+        },
+        "extensionId": {
+          "type": "string",
+          "const": "io.modelcontextprotocol/ui"
+        },
+        "status": {
+          "type": "string",
+          "const": "stable"
+        },
+        "specification": {
+          "type": "string",
+          "const": "2026-01-26",
+          "description": "Stable MCP Apps specification date in modelcontextprotocol/ext-apps."
+        },
+        "specificationUrl": {
+          "type": "string",
+          "const": "https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx"
+        },
+        "mimeTypes": {
+          "type": "array",
+          "allOf": [
+            {
+              "contains": {
+                "$ref": "#/$defs/mcpAppMimeType"
+              }
+            }
+          ],
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "uriScheme": {
+          "type": "string",
+          "const": "ui://"
+        },
+        "transport": {
+          "type": "string",
+          "const": "postMessage",
+          "description": "UI iframes speak MCP JSON-RPC to the host over postMessage."
+        },
+        "lifecycle": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ui/initialize",
+              "ui/notifications/initialized",
+              "ui/notifications/sandbox-proxy-ready",
+              "ui/notifications/sandbox-resource-ready",
+              "ui/notifications/size-changed",
+              "ui/notifications/host-context-changed",
+              "ui/request-display-mode"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "displayModes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "inline",
+              "fullscreen",
+              "pip"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "hostCapabilities": {
+          "type": "object",
+          "properties": {
+            "openLinks": {
+              "type": "boolean"
+            },
+            "serverTools": {
+              "type": "boolean"
+            },
+            "serverResources": {
+              "type": "boolean"
+            },
+            "logging": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "appCapabilities": {
+          "type": "object",
+          "properties": {
+            "toolsListChanged": {
+              "type": "boolean"
+            },
+            "availableDisplayModes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "inline",
+                  "fullscreen",
+                  "pip"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mcpAppRef"
           }
         }
       },

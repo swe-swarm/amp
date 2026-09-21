@@ -1,0 +1,14 @@
+{
+  "name": "@swe-swarm/amp",
+  "version": "1.1.0",
+  "private": true,
+  "description": "AMP (Agent Manifest Protocol) JSON Schema, examples, and validator",
+  "scripts": {
+    "test": "node scripts/validate.mjs",
+    "validate": "node scripts/validate.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}

@@ -1,0 +1,492 @@
+{
+  "amp": "AMP",
+  "version": "1.1.0",
+  "protocol": [
+    "Agent Manifest Protocol",
+    "Adaptive Manifest Protocol",
+    "Adaptive Manifest Platform",
+    "Adaptive Management Plane",
+    "Agent Model Protocol"
+  ],
+  "supportedResources": [
+    "apps",
+    "agents",
+    "apis"
+  ],
+  "protocols": {
+    "agentClientProtocol": {
+      "specification": "https://agentclientprotocol.com",
+      "supportedProtocolVersions": [1, 2],
+      "preferredProtocolVersion": 1,
+      "role": "agent",
+      "info": {
+        "name": "amp-customer-support",
+        "title": "Customer Support Agent",
+        "version": "1.1.0"
+      },
+      "authMethods": [],
+      "transports": [
+        {
+          "kind": "stdio",
+          "status": "stable",
+          "command": "amp-agent",
+          "args": ["--stdio"]
+        },
+        {
+          "kind": "streamable-http",
+          "status": "draft",
+          "endpoint": "https://agents.example.com/acp"
+        }
+      ],
+      "v1": {
+        "protocolVersion": 1,
+        "status": "stable",
+        "schema": "https://agentclientprotocol.com/protocol/v1/schema",
+        "methods": [
+          "initialize",
+          "authenticate",
+          "logout",
+          "session/new",
+          "session/load",
+          "session/list",
+          "session/prompt",
+          "session/cancel",
+          "session/close",
+          "session/resume"
+        ],
+        "agentCapabilities": {
+          "loadSession": true,
+          "promptCapabilities": {
+            "image": true,
+            "audio": false,
+            "embeddedContext": true
+          },
+          "mcpCapabilities": {
+            "http": true,
+            "sse": false
+          }
+        },
+        "clientCapabilities": {
+          "fs": {
+            "readTextFile": true,
+            "writeTextFile": false
+          },
+          "terminal": false,
+          "elicitation": true
+        }
+      },
+      "v2": {
+        "protocolVersion": 2,
+        "status": "draft",
+        "schema": "https://agentclientprotocol.com/protocol/v2/schema",
+        "methods": [
+          "initialize",
+          "auth/login",
+          "auth/logout",
+          "session/new",
+          "session/prompt",
+          "session/list",
+          "session/resume",
+          "session/close",
+          "session/cancel"
+        ],
+        "agentCapabilities": {
+          "session": {
+            "prompt": {
+              "image": {},
+              "embeddedContext": {}
+            },
+            "mcp": {
+              "stdio": {},
+              "http": {}
+            }
+          }
+        },
+        "features": [
+          "prompt-lifecycle",
+          "message-updates-and-chunks",
+          "session-resume-replay",
+          "permission-requests",
+          "required-session-methods"
+        ]
+      }
+    },
+    "activityProtocol": {
+      "specification": "https://github.com/microsoft/Agents/blob/main/specs/activity/protocol-activity.md",
+      "baseline": "3.4",
+      "supportedVersions": ["3.4", "5"],
+      "role": "agent",
+      "endpoint": "https://agents.example.com/api/messages",
+      "activityTypes": [
+        "message",
+        "conversationUpdate",
+        "endOfConversation",
+        "event",
+        "invoke",
+        "typing",
+        "trace",
+        "handoff",
+        "command",
+        "commandResult"
+      ],
+      "channels": [
+        {
+          "channelId": "msteams",
+          "name": "Microsoft Teams"
+        },
+        {
+          "channelId": "webchat",
+          "name": "Web Chat"
+        }
+      ],
+      "v3": {
+        "status": "provisional",
+        "serializableJson": true,
+        "unknownFieldsAccepted": true,
+        "coreFields": [
+          "type",
+          "channelId",
+          "from",
+          "recipient",
+          "conversation",
+          "text",
+          "attachments",
+          "entities"
+        ]
+      },
+      "v5": {
+        "enabled": true,
+        "marker": "5",
+        "status": "committee-review",
+        "envelope": "payload-first",
+        "requiredEnvelopeFields": [
+          "v",
+          "type",
+          "id",
+          "timestamp",
+          "channelId",
+          "conversation",
+          "from",
+          "to",
+          "payload"
+        ],
+        "payloadContentTypes": [
+          "text/plain",
+          "text/markdown",
+          "application/vnd.microsoft.card.adaptive",
+          "image/png"
+        ],
+        "supportedStreamTypes": ["text", "audio"],
+        "entitiesMetadataOnly": true,
+        "relatesToGraph": true
+      }
+    },
+    "mcp": {
+      "specification": "https://modelcontextprotocol.io",
+      "supportedProtocolVersions": ["2026-07-28", "2025-06-18"],
+      "preferredProtocolVersion": "2026-07-28",
+      "era": "dual-era",
+      "stateless": true,
+      "transports": {
+        "stdio": {
+          "enabled": true,
+          "command": "amp-mcp",
+          "args": ["--stdio"]
+        },
+        "streamableHttp": {
+          "enabled": true,
+          "endpoint": "https://mcp.example.com/mcp",
+          "mode": "dual-era",
+          "httpMethods": ["POST", "GET", "DELETE"],
+          "accept": ["application/json", "text/event-stream"],
+          "headers": {
+            "protocolVersion": "MCP-Protocol-Version",
+            "method": "Mcp-Method",
+            "name": "Mcp-Name",
+            "sessionId": "Mcp-Session-Id"
+          },
+          "sessions": true,
+          "getStream": true,
+          "lastEventId": true,
+          "subscriptionsListen": true,
+          "originValidation": true
+        },
+        "httpSse": {
+          "enabled": false,
+          "deprecated": true
+        }
+      },
+      "requestMeta": {
+        "protocolVersion": "io.modelcontextprotocol/protocolVersion",
+        "clientCapabilities": "io.modelcontextprotocol/clientCapabilities",
+        "clientInfo": "io.modelcontextprotocol/clientInfo",
+        "serverInfo": "io.modelcontextprotocol/serverInfo",
+        "logLevel": "io.modelcontextprotocol/logLevel",
+        "subscriptionId": "io.modelcontextprotocol/subscriptionId",
+        "traceContext": ["traceparent", "tracestate", "baggage"]
+      },
+      "methods": {
+        "modern": [
+          "server/discover",
+          "tools/list",
+          "tools/call",
+          "resources/list",
+          "resources/read",
+          "prompts/list",
+          "prompts/get",
+          "subscriptions/listen"
+        ],
+        "legacy": [
+          "initialize",
+          "notifications/initialized",
+          "ping",
+          "resources/subscribe",
+          "resources/unsubscribe",
+          "notifications/cancelled"
+        ]
+      },
+      "resultTypes": ["complete", "input_required"],
+      "extensions": {
+        "io.modelcontextprotocol/ui": {
+          "mimeTypes": ["text/html;profile=mcp-app"]
+        }
+      },
+      "capabilities": {
+        "tools": {
+          "listChanged": true
+        },
+        "resources": {
+          "listChanged": true
+        },
+        "prompts": {
+          "listChanged": false
+        }
+      },
+      "cacheableResults": {
+        "ttlMs": 60000,
+        "cacheScope": "private"
+      }
+    },
+    "mcpApps": {
+      "sep": "1865",
+      "extensionId": "io.modelcontextprotocol/ui",
+      "status": "stable",
+      "specification": "2026-01-26",
+      "specificationUrl": "https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx",
+      "mimeTypes": ["text/html;profile=mcp-app"],
+      "uriScheme": "ui://",
+      "transport": "postMessage",
+      "lifecycle": [
+        "ui/initialize",
+        "ui/notifications/initialized",
+        "ui/notifications/size-changed",
+        "ui/request-display-mode"
+      ],
+      "displayModes": ["inline", "fullscreen"],
+      "hostCapabilities": {
+        "openLinks": true,
+        "serverTools": true,
+        "serverResources": true,
+        "logging": true
+      },
+      "appCapabilities": {
+        "toolsListChanged": true,
+        "availableDisplayModes": ["inline", "fullscreen"]
+      },
+      "resources": [
+        {
+          "uri": "ui://amp/support-dashboard",
+          "name": "support_dashboard",
+          "description": "Interactive support runbook and ticket dashboard",
+          "mimeType": "text/html;profile=mcp-app",
+          "toolName": "ticket.dashboard",
+          "visibility": ["model", "app"],
+          "csp": {
+            "connectDomains": ["https://tickets.example.com"],
+            "resourceDomains": ["https://cdn.example.com"]
+          },
+          "prefersBorder": true
+        }
+      ]
+    }
+  },
+  "agent": {
+    "id": "agent.customer-support.v1",
+    "name": "Customer Support Agent",
+    "model": {
+      "provider": "openai",
+      "name": "gpt-4.1"
+    },
+    "task": "Answer support questions using approved connectors.",
+    "tools": [
+      "knowledge.search",
+      {
+        "name": "ticket.create",
+        "description": "Create a support ticket from the current conversation.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "subject": { "type": "string" },
+            "body": { "type": "string" }
+          },
+          "required": ["subject"]
+        }
+      },
+      {
+        "name": "ticket.dashboard",
+        "description": "Render the interactive support dashboard.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "queue": { "type": "string" }
+          }
+        },
+        "_meta": {
+          "ui": {
+            "resourceUri": "ui://amp/support-dashboard",
+            "visibility": ["model", "app"]
+          }
+        }
+      }
+    ],
+    "workflow": [
+      "classify",
+      "retrieve",
+      "respond"
+    ],
+    "bindings": {
+      "agentClientProtocol": {
+        "role": "agent",
+        "protocolVersions": [1, 2],
+        "info": {
+          "name": "amp-customer-support",
+          "title": "Customer Support Agent",
+          "version": "1.1.0"
+        }
+      },
+      "activityProtocol": {
+        "role": "agent",
+        "endpoint": "https://agents.example.com/api/messages",
+        "channelId": "msteams"
+      },
+      "mcpServers": [
+        {
+          "name": "amp-knowledge",
+          "protocolVersions": ["2026-07-28", "2025-06-18"],
+          "transport": "streamable-http",
+          "endpoint": "https://mcp.example.com/mcp",
+          "era": "dual-era"
+        }
+      ]
+    }
+  },
+  "identities": {
+    "users": [
+      {
+        "id": "user_123",
+        "approvedConnectors": [
+          {
+            "id": "confluence",
+            "name": "Confluence",
+            "scopes": [
+              "read:pages"
+            ],
+            "mcp": {
+              "name": "confluence-mcp",
+              "protocolVersions": ["2026-07-28"],
+              "transport": "streamable-http",
+              "endpoint": "https://connectors.example.com/confluence/mcp",
+              "era": "modern"
+            }
+          }
+        ]
+      }
+    ],
+    "companies": [
+      {
+        "id": "company_acme",
+        "approvedConnectors": [
+          {
+            "id": "salesforce",
+            "name": "Salesforce",
+            "scopes": [
+              "read:accounts",
+              "read:cases"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "semantic": {
+    "entities": [
+      "agent",
+      "user",
+      "company",
+      "connector",
+      "task",
+      "tool",
+      "workflow",
+      "tile",
+      "flashcard",
+      "acpSession",
+      "activity",
+      "mcpServer",
+      "mcpApp"
+    ],
+    "relationships": [
+      "agent_uses_connector",
+      "identity_approves_connector",
+      "tile_streams_data",
+      "flashcard_maps_ui_to_schema",
+      "agent_speaks_acp",
+      "agent_speaks_activity",
+      "agent_exposes_mcp",
+      "tool_renders_mcp_app"
+    ]
+  },
+  "ui": {
+    "adaptiveCardVersions": [
+      "2.1",
+      "1.6"
+    ],
+    "tiles": [
+      {
+        "id": "ops-livetile-1",
+        "type": "adaptive-tile",
+        "dataStream": "events://amp/ops"
+      }
+    ],
+    "mcpUiApps": [
+      "amp-dashboard",
+      {
+        "uri": "ui://amp/support-dashboard",
+        "name": "support_dashboard",
+        "mimeType": "text/html;profile=mcp-app",
+        "toolName": "ticket.dashboard",
+        "visibility": ["model", "app"]
+      }
+    ],
+    "flashcards": [
+      {
+        "id": "flashcard.agent.customer-support",
+        "front": {
+          "ui": "Adaptive Card summary for support runbook"
+        },
+        "back": {
+          "schema": "#/$defs/agent"
+        },
+        "dataLayers": [
+          {
+            "name": "profile",
+            "source": "db://agents/customer-support"
+          },
+          {
+            "name": "runtime",
+            "source": "stream://agents/customer-support/events"
+          }
+        ]
+      }
+    ]
+  }
+}
